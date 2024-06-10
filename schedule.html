@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Farm Watering Schedule</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .missed {
+            color: red;
+        }
+        .section-hours {
+            width: 60px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Farm Watering Schedule</h1>
+
+<table id="schedule">
+    <thead>
+        <tr>
+            <th>Day</th>
+            <th>Morning (6 AM - 10 AM)</th>
+            <th>Evening (4 PM - 7 PM)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Schedule rows will be inserted here by JavaScript -->
+    </tbody>
+</table>
+
+<h2>Missed Sections</h2>
+<table id="missedSections">
+    <thead>
+        <tr>
+            <th>Day</th>
+            <th>Section</th>
+            <th>Completed</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Missed sections will be inserted here by JavaScript -->
+    </tbody>
+</table>
+
+<button onclick="nextDay()">Next Day</button>
+<button onclick="generateReport()">Generate Report</button>
+
+<h2>Watering Report</h2>
+<div id="report"></div>
+
+<script>
+    const schedule = [
+        { day: "Day 1", morning: "M1", evening: "ORANGE" },
+        { day: "Day 2", morning: "M2", evening: "OPEN-FREE" },
+        { day: "Day 3", morning: "M3", evening: "CHICKOO" },
+        { day: "Day 4", morning: "M4", evening: "ANJEER" },
+        { day: "Day 5", morning: "LEMONS", evening: "OPEN-FREE" }
+    ];
+
+    let currentDay = parseInt(localStorage.getItem('currentDay')) || 0;
+    let missedSections = JSON.parse(localStorage.getItem('missedSections')) || [];
+    let wateringData = JSON.parse(localStorage.getItem('wateringData')) || [];
+
+    function renderSchedule() {
+        const tbody = document.querySelector('#schedule tbody');
+        tbody.innerHTML = ''; // Clear previous schedule
+
+        const daySchedule = schedule[currentDay];
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${daySchedule.day}</td>
+                <td>
+                    <label>
+                        <input type="checkbox" id="morning" onchange="trackSection(this, '${daySchedule.morning}', '${daySchedule.day}')">
+                        ${daySchedule.morning}
+                        <input type="number" class="section-hours" id="morningHours" placeholder="hours" min="0" step="0.1">
+                    </label>
+                </td>
+                <td>
+                    <label>
+                        <input type="checkbox" id="evening" onchange="trackSection(this, '${daySchedule.evening}', '${daySchedule.day}')">
+                        ${daySchedule.evening}
+                        <input type="number" class="section-hours" id="eveningHours" placeholder="hours" min="0" step="0.1">
+                    </label>
+                </td>
+            </tr>
+        `;
+
+        renderMissedSections();
+    }
+
+    function renderMissedSections() {
+        const tbody = document.querySelector('#missedSections tbody');
+        tbody.innerHTML = ''; // Clear previous missed sections
+
+        missedSections.forEach((missed, index) => {
+            tbody.innerHTML += `
+                <tr class="missed">
+                    <td>${missed.day}</td>
+                    <td>${missed.section}</td>
+                    <td>
+                        <input type="checkbox" onchange="removeMissedSection(${index})">
+                        <input type="number" class="section-hours" id="missedHours${index}" placeholder="hours" min="0" step="0.1">
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function trackSection(checkbox, section, day) {
+        const hoursInput = checkbox.parentNode.querySelector('.section-hours');
+        const hours = parseFloat(hoursInput.value) || 0;
+
+        if (checkbox.checked) {
+            missedSections = missedSections.filter(item => item.section !== section || item.day !== day);
+            wateringData.push({ day, section, hours });
+        } else {
+            if (!missedSections.some(item => item.section === section && item.day === day)) {
+                missedSections.push({ section, day });
+            }
+            wateringData = wateringData.filter(item => item.section !== section || item.day !== day);
+        }
+
+        localStorage.setItem('missedSections', JSON.stringify(missedSections));
+        localStorage.setItem('wateringData', JSON.stringify(wateringData));
+
+        renderMissedSections(); // Re-render to update missed sections
+    }
+
+    function removeMissedSection(index) {
+        const missedSection = missedSections[index];
+        const missedHours = parseFloat(document.getElementById(`missedHours${index}`).value) || 0;
+
+        if (!wateringData.some(item => item.section === missedSection.section && item.day === missedSection.day)) {
+            wateringData.push({ day: missedSection.day, section: missedSection.section, hours: missedHours });
+        }
+
+        missedSections.splice(index, 1);
+        localStorage.setItem('missedSections', JSON.stringify(missedSections));
+        localStorage.setItem('wateringData', JSON.stringify(wateringData));
+
+        renderMissedSections();
+    }
+
+    function nextDay() {
+        const morningCheckbox = document.getElementById('morning');
+        const eveningCheckbox = document.getElementById('evening');
+        const morningHours = parseFloat(document.getElementById('morningHours').value) || 0;
+        const eveningHours = parseFloat(document.getElementById('eveningHours').value) || 0;
+
+        // If a checkbox was not checked, add to missed sections
+        if (!morningCheckbox.checked) {
+            trackSection(morningCheckbox, schedule[currentDay].morning, schedule[currentDay].day);
+        } else {
+            wateringData.push({ day: schedule[currentDay].day, section: schedule[currentDay].morning, hours: morningHours });
+        }
+
+        if (!eveningCheckbox.checked) {
+            trackSection(eveningCheckbox, schedule[currentDay].evening, schedule[currentDay].day);
+        } else {
+            wateringData.push({ day: schedule[currentDay].day, section: schedule[currentDay].evening, hours: eveningHours });
+        }
+
+        currentDay = (currentDay + 1) % schedule.length;
+
+        localStorage.setItem('currentDay', currentDay);
+        localStorage.setItem('wateringData', JSON.stringify(wateringData));
+
+        renderSchedule();
+    }
+
+    function generateReport() {
+        const reportDiv = document.getElementById('report');
+        reportDiv.innerHTML = ''; // Clear previous report
+
+        const reportData = schedule.map(daySchedule => {
+            const dayData = wateringData.filter(data => data.day === daySchedule.day);
+            const totalHours = dayData.reduce((sum, data) => sum + data.hours, 0);
+            const sectionsWatered = dayData.map(data => `${data.section} (${data.hours.toFixed(1)} hours)`).join(", ");
+            return {
+                day: daySchedule.day,
+                totalHours,
+                sectionsWatered
+            };
+        });
+
+        reportData.forEach(dayReport => {
+            reportDiv.innerHTML += `<p>${dayReport.day}: ${dayReport.totalHours.toFixed(1)} hours - Sections: ${dayReport.sectionsWatered}</p>`;
+        });
+    }
+
+    // Initial render
+    renderSchedule();
+</script>
+
+</body>
+</html>
