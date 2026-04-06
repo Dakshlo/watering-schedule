@@ -1,215 +1,834 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Farm Watering Schedule</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #f4f4f4;
-        }
-        .missed {
-            color: red;
-        }
-        .section-hours {
-            width: 60px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MTCPL Stone Management System</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6f8; color: #222; }
+    .app { max-width: 1400px; margin: 0 auto; padding: 16px; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tab { border: 1px solid #ccc; padding: 8px 12px; border-radius: 6px; background: #fff; cursor: pointer; }
+    .tab.active { background: #1c6dd0; color: #fff; border-color: #1c6dd0; }
+    .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input, select, textarea, button { padding: 6px; font-size: 12px; }
+    button { cursor: pointer; }
+    .btn { border: 1px solid #888; border-radius: 6px; background: #fff; }
+    .btn.green { background: #1e9e53; border-color: #1e9e53; color: #fff; }
+    .btn.red { background: #ca2e2e; border-color: #ca2e2e; color: #fff; }
+    .badge { display: inline-block; border-radius: 12px; padding: 2px 8px; font-size: 11px; border: 1px solid #ccc; }
+    .ok { background: #d8f0dd; border-color: #8dc59a; }
+    .warn { background: #fff4cf; border-color: #e4ca70; }
+    .chip { display: inline-block; padding: 3px 8px; border-radius: 10px; margin: 2px; color: #fff; font-size: 11px; }
+    .metric { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+    .metric h3 { margin: 0; font-size: 12px; color: #666; }
+    .metric p { margin: 6px 0 0; font-size: 20px; font-weight: bold; }
+    .muted { color: #666; font-size: 12px; }
+    .vendor { border-top: 2px solid #ddd; margin-top: 12px; padding-top: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; border: 1px solid #999; }
+    .dot.done { background: #2fa84f; border-color: #2fa84f; }
+    .dot.active { background: #f39b2d; border-color: #f39b2d; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+    @media (max-width: 960px) {
+      .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-
-<h1>Farm Watering Schedule</h1>
-
-<table id="schedule">
-    <thead>
-        <tr>
-            <th>Day</th>
-            <th>Morning (6 AM - 10 AM)</th>
-            <th>Evening (4 PM - 7 PM)</th>
-        </tr>
-    </thead>
-    <tbody>
-        <!-- Schedule rows will be inserted here by JavaScript -->
-    </tbody>
-</table>
-
-<h2>Missed Sections</h2>
-<table id="missedSections">
-    <thead>
-        <tr>
-            <th>Day</th>
-            <th>Section</th>
-            <th>Completed</th>
-        </tr>
-    </thead>
-    <tbody>
-        <!-- Missed sections will be inserted here by JavaScript -->
-    </tbody>
-</table>
-
-<button onclick="nextDay()">Next Day</button>
-<button onclick="generateReport()">Generate Report</button>
-
-<h2>Watering Report</h2>
-<div id="report"></div>
-
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script>
-    const schedule = [
-        { day: "Day 1", morning: "M1", evening: "ORANGE" },
-        { day: "Day 2", morning: "M2", evening: "OPEN-FREE" },
-        { day: "Day 3", morning: "M3", evening: "CHICKOO" },
-        { day: "Day 4", morning: "M4", evening: "ANJEER" },
-        { day: "Day 5", morning: "LEMONS", evening: "OPEN-FREE" }
-    ];
+(function () {
+  var E = React.createElement;
+  var C = Math.cos(Math.PI / 6);
+  var S = 0.5;
+  var LS = {
+    blocks: 'mc_blocks',
+    slabs: 'mc_slabs',
+    kerf: 'mc_kerf',
+    sessions: 'mc_sessions',
+    carveQueue: 'mc_carve_queue',
+    carveActive: 'mc_carve_active',
+    completed: 'mc_completed',
+    slabSeq: 'mc_slab_seq'
+  };
 
-    let currentDay = parseInt(localStorage.getItem('currentDay')) || 0;
-    let missedSections = JSON.parse(localStorage.getItem('missedSections')) || [];
-    let wateringData = JSON.parse(localStorage.getItem('wateringData')) || [];
+  var STONE = {
+    Makrana: { top: '#EEE8DC', front: '#C8BFB0', side: '#D8D0BE' },
+    Pinkstone: { top: '#EDCFC2', front: '#C09282', side: '#D8B4A2' }
+  };
 
-    function renderSchedule() {
-        const tbody = document.querySelector('#schedule tbody');
-        tbody.innerHTML = ''; // Clear previous schedule
+  var SLAB_COLORS = ['#D85A30','#378ADD','#1D9E75','#7F77DD','#BA7517','#639922','#D4537E','#E24B4A','#5F5E5A','#0F6E56'];
 
-        const daySchedule = schedule[currentDay];
+  var VENDORS = [
+    { id: 'mohit', name: 'Mohit', type: 'CNC', group: 'In-House' },
+    { id: 'manthan', name: 'Manthan', type: 'CNC', group: 'In-House' },
+    { id: 'alkesh', name: 'Alkesh', type: 'CNC', group: 'In-House' },
+    { id: 'dinesh_dholi', name: 'Dinesh Dholi', type: 'Manual', group: 'In-House' },
+    { id: 'pintu', name: 'Pintu Bhai', type: 'Manual', group: 'Outside' },
+    { id: 'ramesh', name: 'Ramesh Ji', type: 'Manual', group: 'Outside' },
+    { id: 'bharat', name: 'Bharat', type: 'Manual', group: 'Outside' },
+    { id: 'dinesh_ji', name: 'Dinesh Ji', type: 'Manual', group: 'Outside' }
+  ];
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${daySchedule.day}</td>
-                <td>
-                    <label>
-                        <input type="checkbox" id="morning" onchange="trackSection(this, '${daySchedule.morning}', '${daySchedule.day}')">
-                        ${daySchedule.morning}
-                        <input type="number" class="section-hours" id="morningHours" placeholder="hours" min="0" step="0.1">
-                    </label>
-                </td>
-                <td>
-                    <label>
-                        <input type="checkbox" id="evening" onchange="trackSection(this, '${daySchedule.evening}', '${daySchedule.day}')">
-                        ${daySchedule.evening}
-                        <input type="number" class="section-hours" id="eveningHours" placeholder="hours" min="0" step="0.1">
-                    </label>
-                </td>
-            </tr>
-        `;
+  function sclr(id) {
+    if (!id || typeof id !== 'string') return '#666666';
+    var n = 0;
+    var i;
+    for (i = 0; i < id.length; i++) n += id.charCodeAt(i);
+    return SLAB_COLORS[n % SLAB_COLORS.length];
+  }
 
-        renderMissedSections();
+  function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+  function load(key, fallback) {
+    var raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    try { return JSON.parse(raw); } catch (err) { return fallback; }
+  }
+
+  function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+  function defaults() {
+    return {
+      blocks: [
+        { id: 'BLK-011', l: 8, w: 4, h: 2, stone: 'Makrana', cat: 'Fresh', yard: 'Yard 1', tL: 0, tR: 0, tT: 0, tB: 0, trim: false },
+        { id: 'BLK-012', l: 7, w: 5, h: 2.5, stone: 'Makrana', cat: 'Fresh', yard: 'Yard 1', tL: 0.5, tR: 0, tT: 0.3, tB: 0, trim: true },
+        { id: 'BLK-013', l: 9, w: 4, h: 2, stone: 'Pinkstone', cat: 'Fresh', yard: 'Yard 2', tL: 0, tR: 0, tT: 0, tB: 0, trim: false },
+        { id: 'BLK-014', l: 6, w: 6, h: 1.5, stone: 'Pinkstone', cat: 'Fresh', yard: 'Yard 2', tL: 0, tR: 0.5, tT: 0, tB: 0.4, trim: true }
+      ],
+      slabs: [
+        { id: 'S201', sw: 3, sh: 2, sd: 0.5, label: 'Entrance step', temple: 'Umia Mata' },
+        { id: 'S202', sw: 4, sh: 2.5, sd: 0.75, label: 'Main panel', temple: 'Umia Mata' },
+        { id: 'S203', sw: 2.5, sh: 2.5, sd: 0.5, label: 'Pillar face', temple: 'Agroha Dham' },
+        { id: 'S204', sw: 2, sh: 1.5, sd: 0.5, label: 'Niche slab', temple: 'Agroha Dham' },
+        { id: 'S205', sw: 3.5, sh: 3, sd: 1, label: 'Shrine floor', temple: 'Balaknath' },
+        { id: 'S206', sw: 2.5, sh: 2, sd: 0.5, label: 'Side wall', temple: 'Balaknath' },
+        { id: 'S207', sw: 1.5, sh: 1.5, sd: 0.25, label: 'Decor border', temple: 'Umia Mata' },
+        { id: 'S208', sw: 3, sh: 2.5, sd: 0.75, label: 'Ceiling piece', temple: 'Umia Mata' },
+        { id: 'S209', sw: 2, sh: 2, sd: 0.5, label: 'Corner panel', temple: 'Agroha Dham' }
+      ],
+      kerf: 4,
+      sessions: [],
+      carveQueue: [],
+      carveActive: [],
+      completed: [],
+      slabSeq: 210
+    };
+  }
+
+  function initState() {
+    var d = defaults();
+    return {
+      blocks: load(LS.blocks, d.blocks),
+      slabs: load(LS.slabs, d.slabs),
+      kerf: load(LS.kerf, d.kerf),
+      sessions: load(LS.sessions, d.sessions),
+      carveQueue: load(LS.carveQueue, d.carveQueue),
+      carveActive: load(LS.carveActive, d.carveActive),
+      completed: load(LS.completed, d.completed),
+      slabSeq: load(LS.slabSeq, d.slabSeq)
+    };
+  }
+
+  function isoProject(x, y, z, scale, ox, oy) {
+    return { x: ox + (x - y) * C * scale, y: oy + (x + y) * S * scale - z * scale };
+  }
+
+  function prismSVG(block, placed, opts) {
+    var w = opts && opts.w ? opts.w : 220;
+    var h = opts && opts.h ? opts.h : 140;
+    var mini = opts && opts.mini;
+    var pal = STONE[block.stone] || STONE.Makrana;
+    var l = Number(block.l) || 0;
+    var bw = Number(block.w) || 0;
+    var bh = Number(block.h) || 0;
+    var scale = Math.min((w - 20) / ((l + bw) * C + 0.001), (h - 20) / ((l + bw) * S + bh + 0.001), mini ? 18 : 26);
+    var ox = w / 2;
+    var oy = h - 12;
+    var p000 = isoProject(0, 0, 0, scale, ox, oy);
+    var pL00 = isoProject(l, 0, 0, scale, ox, oy);
+    var pLW0 = isoProject(l, bw, 0, scale, ox, oy);
+    var p0W0 = isoProject(0, bw, 0, scale, ox, oy);
+    var p00H = isoProject(0, 0, bh, scale, ox, oy);
+    var pL0H = isoProject(l, 0, bh, scale, ox, oy);
+    var pLWH = isoProject(l, bw, bh, scale, ox, oy);
+    var p0WH = isoProject(0, bw, bh, scale, ox, oy);
+
+    var elems = [];
+    elems.push(E('defs', { key: 'defs' }, E('pattern', { id: 'hatch-' + block.id, patternUnits: 'userSpaceOnUse', width: 5, height: 5, patternTransform: 'rotate(45)' }, E('line', { x1: 0, y1: 0, x2: 0, y2: 5, stroke: '#888', strokeWidth: 1 }))));
+    elems.push(E('polygon', { key: 'front', points: p000.x+','+p000.y+' '+pL00.x+','+pL00.y+' '+pL0H.x+','+pL0H.y+' '+p00H.x+','+p00H.y, fill: pal.front, stroke: '#666' }));
+    elems.push(E('polygon', { key: 'side', points: pL00.x+','+pL00.y+' '+pLW0.x+','+pLW0.y+' '+pLWH.x+','+pLWH.y+' '+pL0H.x+','+pL0H.y, fill: pal.side, stroke: '#666' }));
+    elems.push(E('polygon', { key: 'top', points: p00H.x+','+p00H.y+' '+pL0H.x+','+pL0H.y+' '+pLWH.x+','+pLWH.y+' '+p0WH.x+','+p0WH.y, fill: pal.top, stroke: '#666' }));
+
+    var tL = Number(block.tL) || 0;
+    var tR = Number(block.tR) || 0;
+    var tT = Number(block.tT) || 0;
+    var tB = Number(block.tB) || 0;
+    function addTopRect(x, y, rw, rh, fill, key) {
+      var a = isoProject(x, y, bh + 0.01, scale, ox, oy);
+      var b = isoProject(x + rw, y, bh + 0.01, scale, ox, oy);
+      var c = isoProject(x + rw, y + rh, bh + 0.01, scale, ox, oy);
+      var d = isoProject(x, y + rh, bh + 0.01, scale, ox, oy);
+      elems.push(E('polygon', { key: key, points: a.x+','+a.y+' '+b.x+','+b.y+' '+c.x+','+c.y+' '+d.x+','+d.y, fill: fill, stroke: '#222', strokeWidth: 0.5 }));
+      return { a: a, c: c };
     }
 
-    function renderMissedSections() {
-        const tbody = document.querySelector('#missedSections tbody');
-        tbody.innerHTML = ''; // Clear previous missed sections
+    if (tL > 0) addTopRect(0, 0, tL, bw, 'url(#hatch-' + block.id + ')', 'trimL');
+    if (tR > 0) addTopRect(l - tR, 0, tR, bw, 'url(#hatch-' + block.id + ')', 'trimR');
+    if (tT > 0) addTopRect(0, 0, l, tT, 'url(#hatch-' + block.id + ')', 'trimT');
+    if (tB > 0) addTopRect(0, bw - tB, l, tB, 'url(#hatch-' + block.id + ')', 'trimB');
 
-        missedSections.forEach((missed, index) => {
-            tbody.innerHTML += `
-                <tr class="missed">
-                    <td>${missed.day}</td>
-                    <td>${missed.section}</td>
-                    <td>
-                        <input type="checkbox" onchange="removeMissedSection(${index})">
-                        <input type="number" class="section-hours" id="missedHours${index}" placeholder="hours" min="0" step="0.1">
-                    </td>
-                </tr>
-            `;
+    var list = (placed || []).filter(function (pl) { return pl && pl.id && typeof pl.px !== 'undefined'; });
+    var i;
+    for (i = 0; i < list.length; i++) {
+      var pl = list[i];
+      var r = addTopRect(pl.px, pl.py, pl.pw, pl.ph, sclr(pl.id), 'pl-' + pl.id + '-' + i);
+      if (!mini && Math.abs(r.c.x - r.a.x) > 16) {
+        elems.push(E('text', { key: 'tx-' + pl.id + '-' + i, x: r.a.x + 4, y: r.a.y + 12, fill: '#fff', fontSize: '10' }, pl.id));
+      }
+    }
+    return E('svg', { width: w, height: h, viewBox: '0 0 ' + w + ' ' + h }, elems);
+  }
+
+  function slabSVG(slab, mini) {
+    var w = mini ? 80 : 130;
+    var h = mini ? 50 : 80;
+    var sw = Number(slab.sw) || 1;
+    var sh = Number(slab.sh) || 1;
+    var sd = Number(slab.sd) || 0.5;
+    var scale = Math.min((w - 20) / (sw + sh + 0.001), (h - 20) / (sw * 0.6 + sh * 0.6 + sd + 0.001), mini ? 11 : 14);
+    var ex = Math.round(sd * scale * 0.82);
+    var ey = Math.round(sd * scale * 0.48);
+    var x = 12;
+    var y = mini ? 24 : 30;
+    var cw = sw * scale;
+    var ch = sh * scale * 0.6;
+    var top = x+','+y+' '+(x+cw)+','+y+' '+(x+cw+ch)+','+(y-ch)+' '+(x+ch)+','+(y-ch);
+    var front = x+','+y+' '+(x+cw)+','+y+' '+(x+cw)+','+(y+ex)+' '+x+','+(y+ex);
+    var side = (x+cw)+','+y+' '+(x+cw+ch)+','+(y-ch)+' '+(x+cw+ch)+','+(y-ch+ex)+' '+(x+cw)+','+(y+ex);
+    return E('svg', { width: w, height: h, viewBox: '0 0 ' + w + ' ' + h }, [
+      E('polygon', { key: 'f', points: front, fill: '#cdbba8', stroke: '#666' }),
+      E('polygon', { key: 's', points: side, fill: '#b7a08b', stroke: '#666' }),
+      E('polygon', { key: 't', points: top, fill: sclr(slab.id), stroke: '#666' }),
+      mini ? null : E('text', { key: 'txt', x: x + 4, y: y - 4, fill: '#333', fontSize: '10' }, slab.id)
+    ]);
+  }
+
+  function optimizeGuillotine(blocks, slabs, kerfMm) {
+    var kerfFt = (Number(kerfMm) || 0) / 304.8;
+    var sorted = slabs.slice().sort(function (a, b) { return (b.sw * b.sh) - (a.sw * a.sh); });
+    var remaining = sorted.slice();
+    var result = { kerfFt: kerfFt, blocks: [], unfit: [] };
+
+    function splitSpace(space, rw, rh) {
+      var right = { x: space.x + rw, y: space.y, w: space.w - rw, h: rh };
+      var bottom = { x: space.x, y: space.y + rh, w: space.w, h: space.h - rh };
+      var a1 = Math.max(right.w * right.h, bottom.w * bottom.h);
+
+      var right2 = { x: space.x + rw, y: space.y, w: space.w - rw, h: space.h };
+      var bottom2 = { x: space.x, y: space.y + rh, w: rw, h: space.h - rh };
+      var a2 = Math.max(right2.w * right2.h, bottom2.w * bottom2.h);
+
+      var spaces = a1 >= a2 ? [right, bottom] : [right2, bottom2];
+      return spaces.filter(function (sp) { return sp.w > 0.001 && sp.h > 0.001; });
+    }
+
+    var bi;
+    for (bi = 0; bi < blocks.length; bi++) {
+      var blk = blocks[bi];
+      if (!blk || !blk.id) continue;
+      var uaL = Math.max(0, blk.l - (Number(blk.tL) || 0) - (Number(blk.tR) || 0));
+      var uaW = Math.max(0, blk.w - (Number(blk.tT) || 0) - (Number(blk.tB) || 0));
+      var spaces = [{ x: Number(blk.tL) || 0, y: Number(blk.tT) || 0, w: uaL, h: uaW }];
+      var placed = [];
+      var sl;
+      for (sl = 0; sl < remaining.length; sl++) {
+        var sb = remaining[sl];
+        if (!sb || !sb.id) continue;
+        var aw = sb.sw + kerfFt;
+        var ah = sb.sh + kerfFt;
+        var best = null;
+        var si;
+        for (si = 0; si < spaces.length; si++) {
+          var sp = spaces[si];
+          if (aw <= sp.w && ah <= sp.h) {
+            var waste = (sp.w * sp.h) - (aw * ah);
+            if (!best || waste < best.waste) best = { si: si, rot: false, rw: aw, rh: ah, pw: sb.sw, ph: sb.sh, waste: waste };
+          }
+          if (ah <= sp.w && aw <= sp.h) {
+            var waste2 = (sp.w * sp.h) - (aw * ah);
+            if (!best || waste2 < best.waste) best = { si: si, rot: true, rw: ah, rh: aw, pw: sb.sh, ph: sb.sw, waste: waste2 };
+          }
+        }
+        if (best) {
+          var spc = spaces[best.si];
+          var p = {
+            id: sb.id, sw: sb.sw, sh: sb.sh, sd: sb.sd, label: sb.label, temple: sb.temple,
+            px: spc.x, py: spc.y, pw: best.pw, ph: best.ph, rot: best.rot, aw: best.rw, ah: best.rh
+          };
+          placed.push(p);
+          spaces.splice(best.si, 1);
+          var newSpaces = splitSpace(spc, best.rw, best.rh);
+          spaces = spaces.concat(newSpaces);
+          remaining.splice(sl, 1);
+          sl -= 1;
+        }
+      }
+      var used = 0;
+      var i;
+      for (i = 0; i < placed.length; i++) used += placed[i].sw * placed[i].sh;
+      var usableArea = uaL * uaW;
+      var kerfWaste = 0;
+      for (i = 0; i < placed.length; i++) kerfWaste += (placed[i].aw * placed[i].ah) - (placed[i].sw * placed[i].sh);
+      var eff = usableArea > 0 ? (used / usableArea) * 100 : 0;
+      result.blocks.push({
+        blkId: blk.id,
+        blk: blk,
+        placed: placed,
+        spaces: spaces,
+        ua: usableArea,
+        ka: kerfWaste,
+        ba: Math.max(0, usableArea - used - kerfWaste),
+        eff: eff
+      });
+    }
+
+    result.unfit = remaining;
+    return result;
+  }
+
+  function App() {
+    var st = initState();
+    var tabState = React.useState('Block Input');
+    var planState = React.useState(null);
+    var blocksState = React.useState(st.blocks);
+    var slabsState = React.useState(st.slabs);
+    var kerfState = React.useState(st.kerf);
+    var sessionsState = React.useState(st.sessions);
+    var queueState = React.useState(st.carveQueue);
+    var activeState = React.useState(st.carveActive);
+    var completedState = React.useState(st.completed);
+    var seqState = React.useState(st.slabSeq);
+
+    var tab = tabState[0], setTab = tabState[1];
+    var plan = planState[0], setPlan = planState[1];
+    var blocks = blocksState[0], setBlocks = blocksState[1];
+    var slabs = slabsState[0], setSlabs = slabsState[1];
+    var kerf = kerfState[0], setKerf = kerfState[1];
+    var sessions = sessionsState[0], setSessions = sessionsState[1];
+    var carveQueue = queueState[0], setCarveQueue = queueState[1];
+    var carveActive = activeState[0], setCarveActive = activeState[1];
+    var completed = completedState[0], setCompleted = completedState[1];
+    var slabSeq = seqState[0], setSlabSeq = seqState[1];
+
+    React.useEffect(function () { save(LS.blocks, blocks); }, [blocks]);
+    React.useEffect(function () { save(LS.slabs, slabs); }, [slabs]);
+    React.useEffect(function () { save(LS.kerf, kerf); }, [kerf]);
+    React.useEffect(function () { save(LS.sessions, sessions); }, [sessions]);
+    React.useEffect(function () { save(LS.carveQueue, carveQueue); }, [carveQueue]);
+    React.useEffect(function () { save(LS.carveActive, carveActive); }, [carveActive]);
+    React.useEffect(function () { save(LS.completed, completed); }, [completed]);
+    React.useEffect(function () { save(LS.slabSeq, slabSeq); }, [slabSeq]);
+
+    function updateBlock(i, key, val) {
+      var nb = blocks.slice();
+      nb[i][key] = (key === 'id' || key === 'stone' || key === 'cat' || key === 'yard') ? val : Number(val);
+      if (key === 'trim') nb[i][key] = !!val;
+      setBlocks(nb);
+    }
+    function addBlock() {
+      var nb = blocks.slice();
+      nb.push({ id: 'BLK-' + (100 + nb.length + 1), l: 6, w: 4, h: 2, stone: 'Makrana', cat: 'Fresh', yard: 'Yard 1', tL: 0, tR: 0, tT: 0, tB: 0, trim: false });
+      setBlocks(nb);
+    }
+    function delBlock(i) { var nb = blocks.slice(); nb.splice(i, 1); setBlocks(nb); }
+
+    function updateSlab(i, key, val) {
+      var ns = slabs.slice();
+      ns[i][key] = (key === 'id' || key === 'label' || key === 'temple') ? val : Number(val);
+      setSlabs(ns);
+    }
+    function addSlab() {
+      var ns = slabs.slice();
+      var id = 'S' + slabSeq;
+      ns.push({ id: id, sw: 2, sh: 2, sd: 0.5, label: 'New slab', temple: 'Other' });
+      setSlabs(ns);
+      setSlabSeq(slabSeq + 1);
+    }
+    function delSlab(i) { var ns = slabs.slice(); ns.splice(i, 1); setSlabs(ns); }
+
+    function generatePlan() {
+      var p = optimizeGuillotine(blocks, slabs, kerf);
+      setPlan(p);
+      setTab('3D Cut Plan');
+    }
+
+    function denyPlan() {
+      setPlan(null);
+      setTab('Block Input');
+    }
+
+    function approvePlan() {
+      if (!plan) return;
+      var usedBlockIds = {};
+      var usedSlabIds = {};
+      var sessionBlocks = [];
+      var i, j;
+      for (i = 0; i < plan.blocks.length; i++) {
+        var rb = plan.blocks[i];
+        if (!rb || !rb.blk || !rb.blk.id || !rb.placed || rb.placed.length === 0) continue;
+        usedBlockIds[rb.blk.id] = true;
+        for (j = 0; j < rb.placed.length; j++) usedSlabIds[rb.placed[j].id] = true;
+        sessionBlocks.push({
+          blkId: rb.blk.id,
+          blk: rb.blk,
+          placed: rb.placed,
+          slabs: rb.placed,
+          status: 'pending_worker',
+          restocked: false,
+          reused: null,
+          stone: rb.blk.stone,
+          l: rb.blk.l,
+          w: rb.blk.w,
+          h: rb.blk.h,
+          yard: rb.blk.yard,
+          tL: rb.blk.tL,
+          tT: rb.blk.tT,
+          ua: rb.ua,
+          ka: rb.ka,
+          ba: rb.ba,
+          eff: rb.eff
         });
+      }
+      var leftBlocks = blocks.filter(function (b) { return !usedBlockIds[b.id]; });
+      var leftSlabs = slabs.filter(function (s) { return !usedSlabIds[s.id]; });
+      var sess = { id: 'SES-' + Date.now(), date: todayISO(), kerf: kerf, blocks: sessionBlocks };
+      setBlocks(leftBlocks);
+      setSlabs(leftSlabs);
+      setSessions(sessions.concat([sess]));
+      setPlan(null);
+      setTab('Cutting');
     }
 
-    function trackSection(checkbox, section, day) {
-        const hoursInput = checkbox.parentNode.querySelector('.section-hours');
-        const hours = parseFloat(hoursInput.value) || 0;
+    function pushToCarving(sb) {
+      var add = [];
+      var i;
+      for (i = 0; i < sb.placed.length; i++) {
+        var pl = sb.placed[i];
+        add.push({
+          id: pl.id,
+          sw: pl.sw, sh: pl.sh, sd: pl.sd,
+          label: pl.label,
+          temple: pl.temple,
+          px: pl.px, py: pl.py, pw: pl.pw, ph: pl.ph,
+          rot: pl.rot, aw: pl.aw, ah: pl.ah,
+          vendorId: '', vendorName: '', vendorType: '', note: '',
+          fromBlock: sb.blkId,
+          stone: sb.stone,
+          yard: sb.yard,
+          cutDate: todayISO(),
+          assignedDate: '',
+          status: 'not_started'
+        });
+      }
+      setCarveQueue(carveQueue.concat(add));
+    }
 
-        if (checkbox.checked) {
-            missedSections = missedSections.filter(item => item.section !== section || item.day !== day);
-            wateringData.push({ day, section, hours });
-        } else {
-            if (!missedSections.some(item => item.section === section && item.day === day)) {
-                missedSections.push({ section, day });
+    function updateSessionBlock(sessionId, blkId, action, restock) {
+      var ns = sessions.slice();
+      var si, bi;
+      for (si = 0; si < ns.length; si++) {
+        if (ns[si].id !== sessionId) continue;
+        for (bi = 0; bi < ns[si].blocks.length; bi++) {
+          var sb = ns[si].blocks[bi];
+          if (sb.blkId !== blkId) continue;
+          if (action === 'approve') sb.status = 'cutting';
+          if (action === 'reject') {
+            sb.status = 'rejected';
+            setBlocks(blocks.concat([sb.blk]));
+            setSlabs(slabs.concat(sb.placed.map(function (p) { return { id: p.id, sw: p.sw, sh: p.sh, sd: p.sd, label: p.label, temple: p.temple }; })));
+          }
+          if (action === 'done') sb.status = 'done_prompt';
+          if (action === 'finalize') {
+            sb.status = 'done';
+            sb.restocked = !!restock;
+            if (restock) {
+              var largest = null;
+              var spaces = optimizeGuillotine([sb.blk], sb.placed.map(function (p) { return { id: p.id, sw: p.sw, sh: p.sh, sd: p.sd, label: p.label, temple: p.temple }; }), kerf).blocks[0].spaces;
+              var i;
+              for (i = 0; i < spaces.length; i++) {
+                var ar = spaces[i].w * spaces[i].h;
+                if (!largest || ar > largest.ar) largest = { ar: ar, sp: spaces[i] };
+              }
+              if (largest && largest.sp) {
+                var reused = {
+                  id: 'R-' + sb.blkId + '-' + Date.now(),
+                  l: Number(largest.sp.w.toFixed(2)),
+                  w: Number(largest.sp.h.toFixed(2)),
+                  h: sb.h,
+                  stone: sb.stone,
+                  cat: 'Reused',
+                  yard: sb.yard,
+                  tL: 0, tR: 0, tT: 0, tB: 0, trim: false
+                };
+                setBlocks(blocks.concat([reused]));
+                sb.reused = reused;
+              }
             }
-            wateringData = wateringData.filter(item => item.section !== section || item.day !== day);
+            pushToCarving(sb);
+          }
         }
-
-        localStorage.setItem('missedSections', JSON.stringify(missedSections));
-        localStorage.setItem('wateringData', JSON.stringify(wateringData));
-
-        renderMissedSections(); // Re-render to update missed sections
+      }
+      setSessions(ns);
     }
 
-    function removeMissedSection(index) {
-        const missedSection = missedSections[index];
-        const missedHours = parseFloat(document.getElementById(`missedHours${index}`).value) || 0;
-
-        if (!wateringData.some(item => item.section === missedSection.section && item.day === missedSection.day)) {
-            wateringData.push({ day: missedSection.day, section: missedSection.section, hours: missedHours });
-        }
-
-        missedSections.splice(index, 1);
-        localStorage.setItem('missedSections', JSON.stringify(missedSections));
-        localStorage.setItem('wateringData', JSON.stringify(wateringData));
-
-        renderMissedSections();
+    function assignCarving(idx, field, value) {
+      var nq = carveQueue.slice();
+      nq[idx][field] = value;
+      if (field === 'vendorId') {
+        var v = VENDORS.find(function (x) { return x.id === value; });
+        nq[idx].vendorName = v ? v.name : '';
+        nq[idx].vendorType = v ? v.type : '';
+      }
+      setCarveQueue(nq);
     }
 
-    function nextDay() {
-        const morningCheckbox = document.getElementById('morning');
-        const eveningCheckbox = document.getElementById('evening');
-        const morningHours = parseFloat(document.getElementById('morningHours').value) || 0;
-        const eveningHours = parseFloat(document.getElementById('eveningHours').value) || 0;
-
-        // If a checkbox was not checked, add to missed sections
-        if (!morningCheckbox.checked) {
-            trackSection(morningCheckbox, schedule[currentDay].morning, schedule[currentDay].day);
-        } else {
-            wateringData.push({ day: schedule[currentDay].day, section: schedule[currentDay].morning, hours: morningHours });
-        }
-
-        if (!eveningCheckbox.checked) {
-            trackSection(eveningCheckbox, schedule[currentDay].evening, schedule[currentDay].day);
-        } else {
-            wateringData.push({ day: schedule[currentDay].day, section: schedule[currentDay].evening, hours: eveningHours });
-        }
-
-        currentDay = (currentDay + 1) % schedule.length;
-
-        localStorage.setItem('currentDay', currentDay);
-        localStorage.setItem('wateringData', JSON.stringify(wateringData));
-
-        renderSchedule();
+    function confirmAssign(idx) {
+      var q = carveQueue[idx];
+      if (!q || !q.vendorId) return;
+      var nq = carveQueue.slice();
+      nq.splice(idx, 1);
+      q.assignedDate = todayISO();
+      setCarveQueue(nq);
+      setCarveActive(carveActive.concat([q]));
+      setTab('Carving');
     }
 
-    function generateReport() {
-        const reportDiv = document.getElementById('report');
-        reportDiv.innerHTML = ''; // Clear previous report
-
-        const reportData = schedule.map(daySchedule => {
-            const dayData = wateringData.filter(data => data.day === daySchedule.day);
-            const totalHours = dayData.reduce((sum, data) => sum + data.hours, 0);
-            const sectionsWatered = dayData.map(data => `${data.section} (${data.hours.toFixed(1)} hours)`).join(", ");
-            return {
-                day: daySchedule.day,
-                totalHours,
-                sectionsWatered
-            };
-        });
-
-        reportData.forEach(dayReport => {
-            reportDiv.innerHTML += `<p>${dayReport.day}: ${dayReport.totalHours.toFixed(1)} hours - Sections: ${dayReport.sectionsWatered}</p>`;
-        });
+    function setCarveStatus(idx, status) {
+      var na = carveActive.slice();
+      na[idx].status = status;
+      setCarveActive(na);
     }
 
-    // Initial render
-    renderSchedule();
+    function dispatchItem(idx) {
+      var item = carveActive[idx];
+      if (!item || item.status !== 'completed') return;
+      var na = carveActive.slice();
+      na.splice(idx, 1);
+      item.dispatchDate = todayISO();
+      setCarveActive(na);
+      setCompleted(completed.concat([item]));
+    }
+
+    var usableTotal = blocks.reduce(function (sum, b) {
+      return sum + Math.max(0, (b.l - (Number(b.tL)||0) - (Number(b.tR)||0)) * (b.w - (Number(b.tT)||0) - (Number(b.tB)||0)));
+    }, 0);
+    var reqTotal = slabs.reduce(function (sum, s) { return sum + (s.sw * s.sh); }, 0);
+
+    function renderBlockInput() {
+      return E('div', null,
+        E('div', { className: 'grid2' },
+          E('div', { className: 'card' },
+            E('h3', null, 'Stock Blocks'),
+            blocks.map(function (b, i) {
+              if (!b || !b.id) return null;
+              return E('div', { className: 'card', key: b.id + i },
+                E('div', { className: 'row' },
+                  E('input', { value: b.id, onChange: function (e) { updateBlock(i, 'id', e.target.value); } }),
+                  E('select', { value: b.stone, onChange: function (e) { updateBlock(i, 'stone', e.target.value); } }, [E('option', { key: 'm' }, 'Makrana'), E('option', { key: 'p' }, 'Pinkstone')]),
+                  E('select', { value: b.yard, onChange: function (e) { updateBlock(i, 'yard', e.target.value); } }, [E('option', { key: 'y1' }, 'Yard 1'), E('option', { key: 'y2' }, 'Yard 2'), E('option', { key: 'y3' }, 'Yard 3')]),
+                  E('span', { className: 'badge ' + (b.cat === 'Fresh' ? 'ok' : 'warn') }, b.cat),
+                  E('button', { className: 'btn', onClick: function () { updateBlock(i, 'cat', b.cat === 'Fresh' ? 'Reused' : 'Fresh'); } }, 'Toggle Cat'),
+                  E('button', { className: 'btn red', onClick: function () { delBlock(i); } }, 'Delete')
+                ),
+                E('div', { className: 'row' },
+                  'L', E('input', { type: 'number', step: '0.1', value: b.l, onChange: function (e) { updateBlock(i, 'l', e.target.value); } }),
+                  'W', E('input', { type: 'number', step: '0.1', value: b.w, onChange: function (e) { updateBlock(i, 'w', e.target.value); } }),
+                  'H', E('input', { type: 'number', step: '0.1', value: b.h, onChange: function (e) { updateBlock(i, 'h', e.target.value); } }),
+                  E('label', null, E('input', { type: 'checkbox', checked: !!b.trim, onChange: function (e) { updateBlock(i, 'trim', e.target.checked); } }), ' Edge Trim')
+                ),
+                b.trim ? E('div', { className: 'row' },
+                  'Left', E('input', { type: 'number', step: '0.1', value: b.tL, onChange: function (e) { updateBlock(i, 'tL', e.target.value); } }),
+                  'Right', E('input', { type: 'number', step: '0.1', value: b.tR, onChange: function (e) { updateBlock(i, 'tR', e.target.value); } }),
+                  'Near', E('input', { type: 'number', step: '0.1', value: b.tT, onChange: function (e) { updateBlock(i, 'tT', e.target.value); } }),
+                  'Far', E('input', { type: 'number', step: '0.1', value: b.tB, onChange: function (e) { updateBlock(i, 'tB', e.target.value); } })
+                ) : null,
+                prismSVG(b, [], { w: 130, h: 80, mini: true })
+              );
+            }),
+            E('button', { className: 'btn green', onClick: addBlock }, 'Add Block')
+          ),
+          E('div', { className: 'card' },
+            E('h3', null, 'Required Slabs'),
+            slabs.map(function (s, i) {
+              if (!s || !s.id) return null;
+              return E('div', { className: 'card', key: s.id + i },
+                E('div', { className: 'row' },
+                  E('strong', null, s.id),
+                  E('input', { value: s.label, onChange: function (e) { updateSlab(i, 'label', e.target.value); } }),
+                  E('button', { className: 'btn red', onClick: function () { delSlab(i); } }, 'Delete')
+                ),
+                E('div', { className: 'row' },
+                  'L', E('input', { type: 'number', step: '0.1', value: s.sw, onChange: function (e) { updateSlab(i, 'sw', e.target.value); } }),
+                  'W', E('input', { type: 'number', step: '0.1', value: s.sh, onChange: function (e) { updateSlab(i, 'sh', e.target.value); } }),
+                  'T', E('input', { type: 'number', step: '0.1', value: s.sd, onChange: function (e) { updateSlab(i, 'sd', e.target.value); } }),
+                  E('select', { value: s.temple, onChange: function (e) { updateSlab(i, 'temple', e.target.value); } },
+                    ['Umia Mata','Agroha Dham','Balaknath','Shrinathji','Other'].map(function (t) { return E('option', { key: t }, t); })
+                  )
+                ),
+                slabSVG(s, true)
+              );
+            }),
+            E('button', { className: 'btn green', onClick: addSlab }, 'Add Slab')
+          )
+        ),
+        E('div', { className: 'card row' },
+          E('span', null, 'Blade kerf (mm):'),
+          E('input', { type: 'number', step: '0.1', value: kerf, onChange: function (e) { setKerf(Number(e.target.value)); } }),
+          E('span', null, 'Usable area: ' + usableTotal.toFixed(2) + ' ft2'),
+          E('span', null, 'Required area: ' + reqTotal.toFixed(2) + ' ft2'),
+          E('button', { className: 'btn green', onClick: generatePlan }, 'Generate 3D Cut Plan')
+        )
+      );
+    }
+
+    function renderPlan() {
+      if (!plan) return E('div', { className: 'card' }, 'No plan generated yet.');
+      var placedCount = 0;
+      var usedBlocks = 0;
+      var effSum = 0;
+      var waste = 0;
+      var i, j;
+      for (i = 0; i < plan.blocks.length; i++) {
+        if (plan.blocks[i].placed.length > 0) usedBlocks += 1;
+        effSum += plan.blocks[i].eff;
+        waste += plan.blocks[i].ka + plan.blocks[i].ba;
+        placedCount += plan.blocks[i].placed.length;
+      }
+      var avgEff = plan.blocks.length ? effSum / plan.blocks.length : 0;
+      return E('div', null,
+        E('div', { className: 'card' },
+          E('strong', null, 'Not committed. '),
+          'Kerf applied: ' + plan.kerfFt.toFixed(4) + ' ft, total waste: ' + waste.toFixed(2) + ' ft2'
+        ),
+        E('div', { className: 'grid4' },
+          E('div', { className: 'metric' }, E('h3', null, 'Placed'), E('p', null, String(placedCount))),
+          E('div', { className: 'metric' }, E('h3', null, 'Blocks used'), E('p', null, String(usedBlocks))),
+          E('div', { className: 'metric' }, E('h3', null, 'Avg efficiency %'), E('p', null, avgEff.toFixed(1))),
+          E('div', { className: 'metric' }, E('h3', null, 'Unfit count'), E('p', null, String(plan.unfit.length)))
+        ),
+        plan.unfit.length ? E('div', { className: 'card', style: { borderColor: '#ca2e2e', color: '#ca2e2e' } }, 'Warning: Some slabs did not fit.') : null,
+        E('div', { className: 'grid2' },
+          plan.blocks.map(function (b) {
+            if (!b || !b.blk || !b.blk.id) return null;
+            return E('div', { className: 'card', key: b.blk.id },
+              E('div', { className: 'row' },
+                E('strong', null, b.blk.id + ' (' + b.blk.stone + ', ' + b.blk.yard + ') '),
+                E('span', { className: 'badge ' + (b.eff >= 75 ? 'ok' : 'warn') }, 'Eff ' + b.eff.toFixed(1) + '%')
+              ),
+              prismSVG(b.blk, b.placed, { w: 260, h: 160 }),
+              E('div', { className: 'muted' }, 'Stone used: ' + (b.ua - b.ba - b.ka).toFixed(2) + ' | Kerf waste: ' + b.ka.toFixed(2) + ' | Remaining: ' + b.ba.toFixed(2)),
+              E('div', null, b.placed.map(function (p, idx) { return E('span', { className: 'chip', style: { background: sclr(p.id) }, key: p.id + idx }, p.id + ' ' + p.sw + 'x' + p.sh); })),
+              E('div', { className: 'muted' }, b.blk.id + ' -> ' + b.placed.map(function (p) { return p.id + ' (' + p.sw + 'x' + p.sh + 'ft)'; }).join(', '))
+            );
+          })
+        ),
+        E('div', { className: 'row' },
+          E('button', { className: 'btn red', onClick: denyPlan }, 'DENY'),
+          E('button', { className: 'btn green', onClick: approvePlan }, 'APPROVE')
+        )
+      );
+    }
+
+    function renderCutting() {
+      return E('div', null,
+        E('div', { className: 'row card' },
+          E('button', { className: 'btn', onClick: function () { window.print(); } }, 'Print')
+        ),
+        sessions.map(function (s) {
+          return E('div', { className: 'card', key: s.id },
+            E('h3', null, 'Session ' + s.id + ' - ' + s.date),
+            s.blocks.map(function (sb) {
+              if (!sb || !sb.blkId) return null;
+              return E('div', { className: 'card', key: sb.blkId },
+                E('div', { className: 'row' },
+                  E('strong', null, sb.blkId + ' (' + sb.status + ')'),
+                  E('span', { className: 'badge' }, sb.yard)
+                ),
+                prismSVG(sb.blk, sb.placed, { w: 250, h: 150 }),
+                E('div', null, sb.placed.map(function (p, idx) {
+                  return E('span', { className: 'chip', style: { background: sclr(p.id) }, key: p.id + idx }, p.id);
+                })),
+                E('div', { className: 'row' },
+                  sb.status === 'pending_worker' ? E('span', null,
+                    E('button', { className: 'btn green', onClick: function () { updateSessionBlock(s.id, sb.blkId, 'approve'); } }, 'Approve Block'),
+                    ' ',
+                    E('button', { className: 'btn red', onClick: function () { updateSessionBlock(s.id, sb.blkId, 'reject'); } }, 'Reject')
+                  ) : null,
+                  sb.status === 'cutting' ? E('span', null,
+                    E('span', { className: 'muted' }, 'Cutting in progress '),
+                    E('button', { className: 'btn', onClick: function () { updateSessionBlock(s.id, sb.blkId, 'done'); } }, 'Mark as Done')
+                  ) : null,
+                  sb.status === 'done_prompt' ? E('span', null,
+                    E('span', { className: 'muted' }, 'Done. Restock remaining block? '),
+                    E('button', { className: 'btn green', onClick: function () { updateSessionBlock(s.id, sb.blkId, 'finalize', true); } }, 'Yes'),
+                    ' ',
+                    E('button', { className: 'btn red', onClick: function () { updateSessionBlock(s.id, sb.blkId, 'finalize', false); } }, 'No')
+                  ) : null,
+                  sb.status === 'done' ? E('span', { className: 'muted' }, sb.restocked ? 'Done - Restocked' : 'Done - Discarded') : null,
+                  sb.status === 'rejected' ? E('span', { className: 'muted' }, 'Rejected - returned to inventory') : null
+                ),
+                E('div', { className: 'row' }, sb.placed.map(function (p, idx) { return E('span', { key: idx }, slabSVG(p, true)); }))
+              );
+            })
+          );
+        })
+      );
+    }
+
+    function renderCarvingAssign() {
+      return E('div', { className: 'grid3' },
+        carveQueue.map(function (q, idx) {
+          if (!q || !q.id) return null;
+          return E('div', { className: 'card', key: q.id + idx },
+            slabSVG(q, false),
+            E('div', null, E('strong', null, q.id), ' - ' + q.label),
+            E('div', { className: 'muted' }, q.sw + 'x' + q.sh + 'x' + q.sd + ' | ' + q.stone + ' | ' + q.temple),
+            E('div', { className: 'muted' }, 'From ' + q.fromBlock + ' | ' + q.yard),
+            E('select', { value: q.vendorId, onChange: function (e) { assignCarving(idx, 'vendorId', e.target.value); } },
+              [E('option', { key: 'none', value: '' }, 'Select Vendor')].concat(
+                VENDORS.map(function (v) { return E('option', { key: v.id, value: v.id }, v.group + ' - ' + v.name + ' (' + v.type + ')'); })
+              )
+            ),
+            E('textarea', { value: q.note, onChange: function (e) { assignCarving(idx, 'note', e.target.value); }, placeholder: 'Notes or file reference' }),
+            E('button', { className: 'btn green', disabled: !q.vendorId, onClick: function () { confirmAssign(idx); } }, 'Confirm - Send to Carving')
+          );
+        })
+      );
+    }
+
+    function renderCarving() {
+      var byVendor = {};
+      carveActive.forEach(function (c) {
+        if (!c || !c.id) return;
+        var k = c.vendorId || 'unassigned';
+        if (!byVendor[k]) byVendor[k] = [];
+        byVendor[k].push(c);
+      });
+      return E('div', null,
+        Object.keys(byVendor).map(function (k) {
+          var list = byVendor[k];
+          var v = VENDORS.find(function (x) { return x.id === k; });
+          var name = v ? v.name : 'Unassigned';
+          var type = v ? v.type : '';
+          var done = list.filter(function (x) { return x.status === 'completed'; }).length;
+          var active = list.filter(function (x) { return x.status === 'in_progress'; }).length;
+          return E('div', { className: 'card vendor', key: k },
+            E('div', { className: 'row' },
+              E('h3', null, name),
+              E('span', { className: 'badge' }, type),
+              E('span', { className: 'muted' }, 'Count: ' + list.length),
+              E('span', null,
+                E('span', { className: 'dot done' }),
+                E('span', { className: 'dot active' }),
+                E('span', { className: 'dot' })
+              )
+            ),
+            E('div', { className: 'grid3' },
+              list.map(function (item) {
+                var idx = carveActive.findIndex(function (x) { return x.id === item.id; });
+                return E('div', { className: 'card', key: item.id + idx },
+                  slabSVG(item, true),
+                  E('div', null, E('strong', null, item.id), ' - ' + item.label),
+                  E('div', { className: 'muted' }, item.temple),
+                  E('div', { className: 'row' },
+                    E('button', { className: 'btn', onClick: function () { setCarveStatus(idx, 'not_started'); } }, 'Not Started'),
+                    E('button', { className: 'btn', onClick: function () { setCarveStatus(idx, 'in_progress'); } }, 'In Progress'),
+                    E('button', { className: 'btn', onClick: function () { setCarveStatus(idx, 'completed'); } }, 'Completed')
+                  ),
+                  item.status === 'completed' ? E('button', { className: 'btn green', onClick: function () { dispatchItem(idx); } }, 'Dispatch') : null
+                );
+              })
+            ),
+            E('div', { className: 'muted' }, 'Done ' + done + ', Active ' + active + ', Pending ' + (list.length - done - active))
+          );
+        })
+      );
+    }
+
+    function renderDashboard() {
+      var vendorMap = {};
+      VENDORS.forEach(function (v) { vendorMap[v.id] = { name: v.name, p: 0, a: 0, d: 0 }; });
+      carveQueue.forEach(function (q) { if (q.vendorId && vendorMap[q.vendorId]) vendorMap[q.vendorId].p += 1; });
+      carveActive.forEach(function (q) {
+        if (q.vendorId && vendorMap[q.vendorId]) {
+          if (q.status === 'completed') vendorMap[q.vendorId].d += 1;
+          else if (q.status === 'in_progress') vendorMap[q.vendorId].a += 1;
+          else vendorMap[q.vendorId].p += 1;
+        }
+      });
+      return E('div', null,
+        E('div', { className: 'grid4' },
+          E('div', { className: 'metric' }, E('h3', null, 'Blocks in stock'), E('p', null, String(blocks.length))),
+          E('div', { className: 'metric' }, E('h3', null, 'Slabs required'), E('p', null, String(slabs.length))),
+          E('div', { className: 'metric' }, E('h3', null, 'Cutting active'), E('p', null, String(sessions.length))),
+          E('div', { className: 'metric' }, E('h3', null, 'Dispatched total'), E('p', null, String(completed.length)))
+        ),
+        E('div', { className: 'grid2' },
+          E('div', { className: 'card' },
+            E('h3', null, 'Stock blocks'),
+            blocks.map(function (b, i) { return E('div', { className: 'row', key: b.id + i }, prismSVG(b, [], { w: 80, h: 50, mini: true }), E('span', null, b.id + ' ' + b.l + 'x' + b.w + 'x' + b.h)); })
+          ),
+          E('div', { className: 'card' },
+            E('h3', null, 'Carving by vendor'),
+            Object.keys(vendorMap).map(function (k) {
+              var r = vendorMap[k];
+              return E('div', { key: k, className: 'row' }, E('strong', null, r.name + ':'), E('span', null, 'Pending ' + r.p), E('span', null, 'Active ' + r.a), E('span', null, 'Done ' + r.d));
+            })
+          )
+        ),
+        E('div', { className: 'card' },
+          E('h3', null, 'Pending slabs'),
+          E('div', { className: 'grid4' }, carveQueue.map(function (q, i) { return E('div', { key: q.id + i, className: 'card' }, slabSVG(q, true), E('div', null, q.id)); }))
+        ),
+        E('div', { className: 'card' },
+          E('h3', null, 'Completed slabs table'),
+          E('table', null,
+            E('thead', null, E('tr', null, E('th', null, 'ID'), E('th', null, 'Label'), E('th', null, 'Temple'), E('th', null, 'Vendor'), E('th', null, 'Dispatch Date'))),
+            E('tbody', null,
+              completed.map(function (c, i) { return E('tr', { key: c.id + i }, E('td', null, c.id), E('td', null, c.label), E('td', null, c.temple), E('td', null, c.vendorName), E('td', null, c.dispatchDate)); })
+            )
+          )
+        )
+      );
+    }
+
+    var pages = ['Block Input', '3D Cut Plan', 'Cutting', 'Carving Assign', 'Carving', 'Dashboard'];
+    var content = null;
+    if (tab === 'Block Input') content = renderBlockInput();
+    if (tab === '3D Cut Plan') content = renderPlan();
+    if (tab === 'Cutting') content = renderCutting();
+    if (tab === 'Carving Assign') content = renderCarvingAssign();
+    if (tab === 'Carving') content = renderCarving();
+    if (tab === 'Dashboard') content = renderDashboard();
+
+    return E('div', { className: 'app' },
+      E('h1', null, 'MTCPL Stone Management System'),
+      E('div', { className: 'nav' }, pages.map(function (p) {
+        return E('button', { key: p, className: 'tab' + (p === tab ? ' active' : ''), onClick: function () { setTab(p); } }, p);
+      })),
+      content
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(E(App));
+})();
 </script>
-
 </body>
 </html>
